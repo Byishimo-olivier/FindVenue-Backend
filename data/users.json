@@ -1,0 +1,56 @@
+[
+  {
+    "id": "cbcb4894-dac8-4871-b75e-ba7c70c483f8",
+    "fullName": "Ganza Marius",
+    "email": "byishimoolivier39@gmail.com",
+    "phone": "+250783227490",
+    "role": "owner",
+    "provider": "password",
+    "verified": true,
+    "passwordHash": "c7e1f166b4a19188a77d24dc680dbf99:05ad6f7144e5dab868ab423c59e337a236d8795afc2741a0883bb6627e7518c148319b31f0435e1e14a0c9caf1220c8ddcfc0feb602c494d0199fca4617e783d",
+    "createdAt": "2026-05-19T14:41:25.021Z",
+    "verificationMethod": "authenticator",
+    "verifiedAt": "2026-05-19T15:01:33.701Z"
+  },
+  {
+    "id": "2d0e2aa7-e483-449a-8384-10e14fab1368",
+    "fullName": "Amani Marius",
+    "email": "dorodorodoro089@gmail.com",
+    "phone": "+250783227490",
+    "role": "owner",
+    "provider": "password",
+    "verified": false,
+    "passwordHash": "b64a32003072454ca32a8822befa7f4a:b50661ac94fb8496a848078159c4546fb04256cbae4c0dcb823e529ef538875c529a7fee83a3a6233e85a071650622c69b487c52f47c21f4348525d8357cf9c9",
+    "createdAt": "2026-05-19T15:09:27.941Z",
+    "verificationCodeHash": "f4c6d1c4ccd8689d58f6bdeef770ab18ed08fe4275a17a7655d6b058beb8125c",
+    "verificationCodeExpiresAt": 1779203967941,
+    "verificationCodeCreatedAt": "2026-05-19T15:09:27.941Z"
+  },
+  {
+    "id": "90817991-c0d6-4ccc-ace5-391638c21f10",
+    "fullName": "Byishimo olivier",
+    "email": "olibyishi@gmail.com",
+    "phone": "+250783227490",
+    "role": "customer",
+    "provider": "password",
+    "verified": true,
+    "passwordHash": "618ae4f9d9f332576a9d7aab39258ae2:80f935bfb3970794d861a32905a23021712db7310aa94353391b4e622c77544851cb6c7e19767e70741283bf3f562abf57c749213d3584441f32781f7d7e5ba3",
+    "createdAt": "2026-05-20T10:27:34.740Z",
+    "verificationMethod": "authenticator",
+    "verifiedAt": "2026-05-20T10:28:06.585Z"
+  },
+  {
+    "id": "32097de3-ba67-427f-ba0f-e9af789520c8",
+    "fullName": "Test User",
+    "email": "testuser@example.rw",
+    "phone": "+250780000000",
+    "role": "customer",
+    "provider": "password",
+    "verified": false,
+    "passwordHash": "920cb487865a081b0753a43272fd8b76:6feb285603dba64721b187f0a2af7cc433b5e6ba78dd872daa35b92a275564a45ff02a5a0e419aee110339e20bf509035db5c2b2c0960aeb786e1bd53b135e93",
+    "createdAt": "2026-05-20T10:42:42.433Z",
+    "verificationCodeHash": "d5ad17340f17ad93b3fe871f9f564e1b88931efcf17a1d19a1aa883a1e43f3b5",
+    "verificationCodeExpiresAt": 1779274362435,
+    "verificationCodeCreatedAt": "2026-05-20T10:42:42.435Z"
+  }
+]
