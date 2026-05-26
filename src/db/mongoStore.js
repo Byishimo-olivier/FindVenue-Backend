@@ -4,11 +4,19 @@ const { MongoClient } = require('mongodb');
 const config = require('../config');
 
 let clientPromise;
+let mongoClient;
 let warnedAboutMongoFallback = false;
+let mongoUnavailableUntil = 0;
 const dataDir = path.resolve(__dirname, '..', '..', 'data');
+const mongoConnectionTimeoutMs = Number(process.env.MONGO_CONNECTION_TIMEOUT_MS || 2500);
+const mongoRetryCooldownMs = Number(process.env.MONGO_RETRY_COOLDOWN_MS || 60000);
+
+function isMongoEnabled() {
+  return String(process.env.USE_MONGO || '').toLowerCase() === 'true';
+}
 
 function shouldUseMongo() {
-  return config.dbUrl && process.env.USE_MONGO === 'true';
+  return config.dbUrl && isMongoEnabled() && Date.now() >= mongoUnavailableUntil;
 }
 
 function withMongoConnectionHelp(error) {
@@ -27,10 +35,12 @@ function getClient() {
     }
 
     const client = new MongoClient(config.dbUrl, {
-      serverSelectionTimeoutMS: 1500,
+      serverSelectionTimeoutMS: mongoConnectionTimeoutMs,
     });
+    mongoClient = client;
     clientPromise = client.connect().catch((error) => {
       clientPromise = undefined;
+      mongoClient = undefined;
       throw withMongoConnectionHelp(error);
     });
   }
@@ -40,25 +50,38 @@ function getClient() {
 async function getDb() {
   let client;
   try {
-    client = await getClient();
+    const pendingClient = getClient();
+    client = pendingClient && typeof pendingClient.then === 'function'
+      ? await pendingClient
+      : pendingClient;
   } catch (error) {
+    if (error.code === 'MONGO_CONNECTION_TIMEOUT' && mongoClient) {
+      mongoClient.close(true).catch(() => {});
+    }
     clientPromise = undefined;
+    mongoClient = undefined;
+    mongoUnavailableUntil = Date.now() + mongoRetryCooldownMs;
     if (!warnedAboutMongoFallback) {
       warnedAboutMongoFallback = true;
-      console.warn(`⚠ MongoDB unavailable; using local JSON data store.\n   Error: ${error.message}`);
+      console.warn(`MongoDB unavailable; ${isMongoEnabled() ? 'not using' : 'using'} local JSON data store.\n   Error: ${error.message}`);
+    }
+    if (isMongoEnabled()) {
+      throw error;
     }
     return null;
   }
 
   if (!client) {
-    if (!warnedAboutMongoFallback && shouldUseMongo()) {
-      warnedAboutMongoFallback = true;
-      console.warn(`⚠ MongoDB not configured. Set USE_MONGO=true in .env to enable MongoDB.`);
+    if (isMongoEnabled()) {
+      if (!config.dbUrl) {
+        throw new Error('MongoDB is enabled, but no MongoDB connection string is configured.');
+      }
+      throw new Error('MongoDB is temporarily unavailable after a previous connection failure. Restart the backend or wait for the retry cooldown.');
     }
     return null;
   }
 
-  console.log('✓ Connected to MongoDB');
+  console.log(`Connected to MongoDB database "${config.dbName}"`);
   return client.db(config.dbName);
 }
 
@@ -74,14 +97,14 @@ async function readCollection(name) {
     try {
       const content = await fs.readFile(path.join(dataDir, `${name}.json`), 'utf8');
       const data = JSON.parse(content);
-      console.log(`✓ Read ${data.length} ${name} from JSON file`);
+      console.log(`Read ${data.length} ${name} from JSON file`);
       return data;
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log(`ℹ ${name}.json not found, starting with empty collection`);
+        console.log(`${name}.json not found, starting with empty collection`);
         return [];
       }
-      console.error(`✗ Failed to read ${name}.json:`, error);
+      console.error(`Failed to read ${name}.json:`, error);
       throw error;
     }
   }
@@ -97,9 +120,9 @@ async function writeCollection(name, rows) {
       await fs.mkdir(dataDir, { recursive: true });
       const filePath = path.join(dataDir, `${name}.json`);
       await fs.writeFile(filePath, JSON.stringify(rows, null, 2));
-      console.log(`✓ Saved ${rows.length} ${name} to ${filePath}`);
+      console.log(`Saved ${rows.length} ${name} to ${filePath}`);
     } catch (error) {
-      console.error(`✗ Failed to write ${name}.json:`, error);
+      console.error(`Failed to write ${name}.json:`, error);
       throw error;
     }
     return;
@@ -118,6 +141,7 @@ async function closeMongo() {
   const client = await clientPromise;
   await client.close();
   clientPromise = undefined;
+  mongoClient = undefined;
 }
 
 module.exports = { closeMongo, readCollection, writeCollection };

@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const config = require('../config');
 
 let transporter;
+const emailSendTimeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 5000);
 
 function isEmailConfigured() {
   return Boolean(config.mailUser && config.mailPassword);
@@ -41,6 +42,9 @@ function getTransporter() {
         servername: config.mailHost,
         rejectUnauthorized: false,
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
       logger: config.mailDebug,
       debug: config.mailDebug,
     });
@@ -71,13 +75,22 @@ async function sendEmail({ to, subject, text, html }) {
   }
 
   try {
-    const info = await mailer.sendMail({
-      from: `"Smart Event Venue" <${config.mailFrom}>`,
-      to,
-      subject,
-      text,
-      html,
-    });
+    const info = await Promise.race([
+      mailer.sendMail({
+        from: `"Smart Event Venue" <${config.mailFrom}>`,
+        to,
+        subject,
+        text,
+        html,
+      }),
+      new Promise((_, reject) => {
+        setTimeout(() => {
+          const error = new Error(`Email delivery timed out after ${emailSendTimeoutMs}ms.`);
+          error.code = 'EMAIL_SEND_TIMEOUT';
+          reject(error);
+        }, emailSendTimeoutMs);
+      }),
+    ]);
 
     console.log(`Email accepted by SMTP for ${to}: ${info.messageId || 'no message id'}`);
     return {
@@ -87,6 +100,10 @@ async function sendEmail({ to, subject, text, html }) {
       rejected: info.rejected,
     };
   } catch (error) {
+    if (error.code === 'EMAIL_SEND_TIMEOUT' && transporter) {
+      transporter.close();
+      transporter = undefined;
+    }
     const reason = getEmailErrorReason(error);
     console.error(`Email delivery failed: ${reason}`);
     // In development, don't fail if email fails - just log it

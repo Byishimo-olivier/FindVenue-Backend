@@ -225,7 +225,9 @@ async function requestPasswordReset(input) {
     });
     await writeCollection('resetTokens', resetTokens);
     const resetUrl = `${config.frontendUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
-    await sendPasswordReset({ to: user.email, fullName: user.fullName, resetUrl });
+    if (!config.exposeDevCodes || process.env.SEND_DEV_EMAILS === 'true') {
+      await sendPasswordReset({ to: user.email, fullName: user.fullName, resetUrl });
+    }
   }
 
   return {

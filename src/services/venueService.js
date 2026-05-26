@@ -3,68 +3,11 @@ const { readCollection, writeCollection } = require('../db/mongoStore');
 const { HttpError } = require('../utils/errors');
 const { cleanString } = require('../utils/validators');
 
-const defaultVenue = {
-  id: 'akagera',
-  ownerId: null,
-  name: 'Akagera Safari Lodge Event Space',
-  contactPerson: 'Jean Damascene Nkurunziza',
-  phone: '+250 788 000 000',
-  email: 'contact@akageralodge.rw',
-  category: 'Grasslands Earth Collection',
-  label: 'Indoor/Outdoor',
-  location: 'Akagera National Park, Rwanda',
-  province: 'Eastern Province',
-  setting: 'National Park',
-  description: 'Perched on a ridge overlooking Lake Ihema, the Akagera Safari Lodge Event Space offers an unparalleled fusion of wild adventure and high-end sophistication.',
-  capacity: 'Up to 250',
-  price: 'RWF 1,250,000',
-  cleaningFee: 'RWF 50,000',
-  decorFee: 'RWF 200,000',
-  heroImage: 'https://images.pexels.com/photos/260922/pexels-photo-260922.jpeg?auto=compress&cs=tinysrgb&w=1400',
-  heroMediaType: 'image',
-  galleryImages: [
-    'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=800',
-    'https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg?auto=compress&cs=tinysrgb&w=800',
-  ],
-  galleryMedia: [
-    { url: 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg?auto=compress&cs=tinysrgb&w=800', type: 'image' },
-    { url: 'https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg?auto=compress&cs=tinysrgb&w=800', type: 'image' },
-  ],
-  addons: [
-    { id: 'executive-catering', name: 'Executive Catering', description: 'Premium 5-course plated service with dedicated waitstaff.', amount: 450000 },
-    { id: 'floral-decor', name: 'Floral & Decor Package', description: 'Custom centerpiece arrangements and ambient lighting design.', amount: 250000 },
-    { id: 'event-photography', name: 'Event Photography', description: '4 hours of professional coverage and edited digital gallery.', amount: 150000 },
-    { id: 'premium-av', name: 'Premium Audiovisual Suite', description: 'Projectors, surround sound, lighting, and mic setup.', amount: 200000 },
-  ],
-  amenities: [
-    { icon: 'P', title: 'Valet Service', body: 'Professional parking for up to 100 private vehicles.' },
-    { icon: 'WiFi', title: 'Fiber Internet', body: 'High-speed connectivity for event teams and guests.' },
-    { icon: 'AV', title: 'Audio Visual', body: 'Presentation sound, lighting, and screen support.' },
-    { icon: 'Food', title: 'Safari Catering', body: 'World-class cuisine with a modern Rwandan twist.' },
-    { icon: 'Power', title: 'Gen-set Backup', body: 'Uninterrupted power for your critical event moments.' },
-    { icon: 'Decor', title: 'Traditional Decor', body: 'Curated imigongo and local craft styling options.' },
-  ],
-  tags: ['Fiber Internet', 'Catering', '250 guests'],
-  rating: '4.9',
-  reviews: 32,
-  status: 'Approved',
-  tier: 'Excellence Hub',
-  tin: '102345678',
-  rdbNumber: '100234567',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-};
-
 function withVenueDefaults(venue) {
   return {
     ...venue,
     addons: Array.isArray(venue.addons) ? venue.addons : [],
   };
-}
-
-function withDefaultVenue(venues) {
-  const normalizedVenues = venues.map(withVenueDefaults);
-  return normalizedVenues.some((venue) => venue.id === defaultVenue.id) ? normalizedVenues : [defaultVenue, ...normalizedVenues];
 }
 
 function slugify(value) {
@@ -139,7 +82,7 @@ function normalizeVenue(input, ownerId, existing = {}) {
 }
 
 async function listVenues(filters = {}) {
-  const venues = withDefaultVenue(await readCollection('venues'));
+  const venues = (await readCollection('venues')).map(withVenueDefaults);
   return venues.filter((venue) => {
     if (filters.ownerId && venue.ownerId !== filters.ownerId) return false;
     if (filters.province && venue.province !== filters.province) return false;
@@ -149,7 +92,7 @@ async function listVenues(filters = {}) {
 }
 
 async function getVenue(id) {
-  const venues = withDefaultVenue(await readCollection('venues'));
+  const venues = (await readCollection('venues')).map(withVenueDefaults);
   const venue = venues.find((item) => item.id === id);
   if (!venue) throw new HttpError(404, 'Venue not found.');
   return venue;
@@ -190,4 +133,23 @@ async function deleteVenue(id, user) {
   await writeCollection('venues', venues.filter((item) => item.id !== id));
 }
 
-module.exports = { createVenue, deleteVenue, getVenue, listVenues, updateVenue };
+async function updateVenueReviewStats(id, rating, reviews) {
+  const venues = await readCollection('venues');
+  const index = venues.findIndex((item) => item.id === id);
+  const updatedAt = new Date().toISOString();
+
+  if (index === -1) {
+    throw new HttpError(404, 'Venue not found.');
+  } else {
+    venues[index] = {
+      ...venues[index],
+      rating,
+      reviews,
+      updatedAt,
+    };
+  }
+
+  await writeCollection('venues', venues);
+}
+
+module.exports = { createVenue, deleteVenue, getVenue, listVenues, updateVenue, updateVenueReviewStats };

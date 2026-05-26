@@ -8,6 +8,15 @@ if (process.argv.includes('--check')) {
   process.exit(0);
 }
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`Smart Event Venue API running on http://localhost:${config.port}`);
+});
+
+server.on('error', (error) => {
+  console.error(`Backend failed to start on port ${config.port}:`, error.message);
+  process.exitCode = 1;
+});
+
+server.on('close', () => {
+  console.log('Backend HTTP server closed.');
 });

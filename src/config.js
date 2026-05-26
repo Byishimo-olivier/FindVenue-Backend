@@ -20,6 +20,17 @@ const mailPort = getNumberEnv('MAIL_PORT', 'SMTP_PORT') || 465;
 const explicitMailSecure = getBooleanEnv('MAIL_SECURE');
 const dbUrl = process.env.db_url || process.env.url_db || process.env.DB_URL || process.env.DATABASE_URL || process.env.MONGODB_URI || process.env.URL_DB || '';
 
+function getDbNameFromUrl(url) {
+  if (!url) return '';
+
+  try {
+    const parsed = new URL(url);
+    return decodeURIComponent(parsed.pathname.replace(/^\/+|\/+$/g, ''));
+  } catch (_error) {
+    return '';
+  }
+}
+
 const config = {
   port: Number(process.env.PORT || process.env.port || 4000),
   tokenSecret: process.env.TOKEN_SECRET || 'dev-token-secret-change-me',
@@ -38,7 +49,9 @@ const config = {
   mailRequireTls: getBooleanEnv('MAIL_REQUIRE_TLS'),
   mailDebug: getBooleanEnv('MAIL_DEBUG') === true,
   dbUrl,
-  dbName: process.env.DB_NAME || process.env.db_name || 'smart_event_venue',
+  dbName: process.env.DB_NAME || process.env.db_name || getDbNameFromUrl(dbUrl) || 'smart_event_venue',
+  openAiApiKey: process.env.OPENAI_API_KEY || process.env.openai_api_key || '',
+  openAiModel: process.env.OPENAI_MODEL || process.env.openai_model || 'gpt-5.4-mini',
   exposeDevCodes: process.env.NODE_ENV !== 'production',
 };
 

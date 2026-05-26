@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { createVenueReview, listVenueReviews } = require('../services/reviewService');
 const { createVenue, deleteVenue, getVenue, listVenues, updateVenue } = require('../services/venueService');
 const { asyncHandler } = require('../utils/errors');
 
@@ -21,6 +22,16 @@ router.get('/mine', requireAuth, asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
   const venue = await getVenue(req.params.id);
   res.json({ venue });
+}));
+
+router.get('/:id/reviews', asyncHandler(async (req, res) => {
+  const result = await listVenueReviews(req.params.id);
+  res.json(result);
+}));
+
+router.post('/:id/reviews', asyncHandler(async (req, res) => {
+  const result = await createVenueReview(req.params.id, req.body, req.user);
+  res.status(201).json(result);
 }));
 
 router.post('/', requireAuth, requireRole('owner'), asyncHandler(async (req, res) => {
