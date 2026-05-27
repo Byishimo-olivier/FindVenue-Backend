@@ -52,5 +52,31 @@
     "verificationCodeHash": "d5ad17340f17ad93b3fe871f9f564e1b88931efcf17a1d19a1aa883a1e43f3b5",
     "verificationCodeExpiresAt": 1779274362435,
     "verificationCodeCreatedAt": "2026-05-20T10:42:42.435Z"
+  },
+  {
+    "id": "411d271c-ab9d-4722-834e-2dceb5585c83",
+    "fullName": "Admin User",
+    "email": "admin@smartevent.rw",
+    "phone": "+250780000001",
+    "role": "admin",
+    "provider": "password",
+    "verified": true,
+    "passwordHash": "2268e10a6036c3c49c84e9179e4ad143:b3e0fbf488e3830e38c44ae9b14e19a8b0a96b5cff943c14ab3bf51b9c3e69411c08334e5f2360e7f7bff79862bac194c2773ff88dbf204cbecd3937d08cd882",
+    "createdAt": "2026-05-26T14:47:15.626Z",
+    "verifiedAt": "2026-05-26T14:47:15.653Z"
+  },
+  {
+    "id": "5ced877f-4e0b-48a7-b31d-e711f0426cc3",
+    "fullName": "System Admin",
+    "email": "oliverbyo34@gmail.com",
+    "phone": "+250788000000",
+    "role": "admin",
+    "provider": "password",
+    "verified": true,
+    "passwordHash": "2d2d5bbf3647b7dba7883ee8aa97a9ef:29cee8a4c09eb37ebc187503e4ec8aaa5f2ad4dc1d9c7492b1d0f9a708a0fa7779e358c0a8c15d1d850f8be68be799999dfa409e8b335a932d89964f4c7dd989",
+    "createdAt": "2026-05-26T14:34:08.017Z",
+    "verificationCodeHash": "3d19f8a01d00954e8f6af85d55df1801d3800d93e0963f5c77839e1afeeecb60",
+    "verificationCodeExpiresAt": 1779806648033,
+    "verificationCodeCreatedAt": "2026-05-26T14:34:08.035Z"
   }
 ]
