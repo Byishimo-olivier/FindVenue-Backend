@@ -7,10 +7,20 @@ const { asyncHandler } = require('../utils/errors');
 const router = express.Router();
 
 router.get('/', asyncHandler(async (req, res) => {
-  const venues = await listVenues({
-    province: req.query.province,
-    status: req.query.status,
-  });
+  const limit = Number.parseInt(req.query.limit, 10);
+  const skip = Number.parseInt(req.query.skip, 10);
+
+  const venues = await listVenues(
+    {
+      province: req.query.province,
+      status: req.query.status,
+    },
+    {
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 60,
+      skip: Number.isFinite(skip) && skip > 0 ? skip : 0,
+    },
+  );
+
   res.json({ venues });
 }));
 

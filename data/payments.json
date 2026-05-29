@@ -1,0 +1,16 @@
+[
+  {
+    "id": "pay_c496c287747e416cb6",
+    "userId": "cbcb4894-dac8-4871-b75e-ba7c70c483f8",
+    "venueId": "keza-garden",
+    "bookingId": "book_7813d5aa933c43989b",
+    "amount": 2124000,
+    "currency": "RWF",
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-29T11:23:48.660Z",
+    "updatedAt": "2026-05-29T11:23:48.697Z",
+    "paidAt": "2026-05-29T11:23:48.697Z"
+  }
+]

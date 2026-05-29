@@ -3,10 +3,36 @@ const { readCollection, writeCollection } = require('../db/mongoStore');
 const { HttpError } = require('../utils/errors');
 const { cleanString } = require('../utils/validators');
 
+const fallbackHeroImage = 'https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg?auto=compress&cs=tinysrgb&w=1200';
+
 function withVenueDefaults(venue) {
   return {
     ...venue,
     addons: Array.isArray(venue.addons) ? venue.addons : [],
+  };
+}
+
+function isDataUri(value) {
+  return typeof value === 'string' && /^data:image\//i.test(value);
+}
+
+function compactVenueForList(venue) {
+  return {
+    ...venue,
+    heroImage: isDataUri(venue.heroImage) ? fallbackHeroImage : venue.heroImage || fallbackHeroImage,
+    galleryImages: Array.isArray(venue.galleryImages)
+      ? venue.galleryImages.filter((item) => typeof item === 'string' && !isDataUri(item)).slice(0, 3)
+      : [],
+    galleryMedia: [],
+    amenities: [],
+    addons: [],
+    contactPerson: '',
+    phone: '',
+    email: '',
+    cleaningFee: '',
+    decorFee: '',
+    tin: '',
+    rdbNumber: '',
   };
 }
 
@@ -81,14 +107,21 @@ function normalizeVenue(input, ownerId, existing = {}) {
   };
 }
 
-async function listVenues(filters = {}) {
-  const venues = (await readCollection('venues')).map(withVenueDefaults);
-  return venues.filter((venue) => {
+async function listVenues(filters = {}, options = {}) {
+  const limit = Number.isFinite(options.limit) ? options.limit : 60;
+  const skip = Number.isFinite(options.skip) ? options.skip : 0;
+
+  const venues = (await readCollection('venues')).map(withVenueDefaults).map(compactVenueForList);
+  const filtered = venues.filter((venue) => {
     if (filters.ownerId && venue.ownerId !== filters.ownerId) return false;
     if (filters.province && venue.province !== filters.province) return false;
     if (filters.status && venue.status !== filters.status) return false;
     return true;
   });
+
+  return filtered
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(skip, skip + limit);
 }
 
 async function getVenue(id) {

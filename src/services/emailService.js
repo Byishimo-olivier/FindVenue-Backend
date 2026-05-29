@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 const config = require('../config');
 
 let transporter;
-const emailSendTimeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 5000);
+const emailSendTimeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 20000);
 
 function isEmailConfigured() {
   return Boolean(config.mailUser && config.mailPassword);
@@ -42,9 +42,9 @@ function getTransporter() {
         servername: config.mailHost,
         rejectUnauthorized: false,
       },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
+      connectionTimeout: emailSendTimeoutMs,
+      greetingTimeout: emailSendTimeoutMs,
+      socketTimeout: emailSendTimeoutMs,
       logger: config.mailDebug,
       debug: config.mailDebug,
     });
@@ -84,11 +84,12 @@ async function sendEmail({ to, subject, text, html }) {
         html,
       }),
       new Promise((_, reject) => {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           const error = new Error(`Email delivery timed out after ${emailSendTimeoutMs}ms.`);
           error.code = 'EMAIL_SEND_TIMEOUT';
           reject(error);
         }, emailSendTimeoutMs);
+        timer.unref?.();
       }),
     ]);
 

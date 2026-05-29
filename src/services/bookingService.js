@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { readCollection, writeCollection } = require('../db/mongoStore');
 const { HttpError } = require('../utils/errors');
 const { cleanString } = require('../utils/validators');
-const { getVenue } = require('./venueService');
+const { getVenue, listVenues } = require('./venueService');
 
 const vatRate = 0.18;
 const depositRate = 0.3;
@@ -169,14 +169,95 @@ function assertCanAccessBooking(booking, user) {
   throw new HttpError(403, 'You can only access bookings connected to your account.');
 }
 
+function parseTimeToMinutes(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (!match) return 0;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const period = match[3].toUpperCase();
+
+  if (period === 'PM' && hours < 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+function hasTimeOverlap(startA, endA, startB, endB) {
+  return startA < endB && startB < endA;
+}
+
 function hasScheduleConflict(bookings, input, ignoreBookingId) {
+  const requestedStart = parseTimeToMinutes(input.startTime);
+  const requestedEnd = requestedStart + Number(input.durationHours || 0) * 60;
+
   return bookings.some((booking) => {
     if (booking.id === ignoreBookingId) return false;
     if (booking.venueId !== input.venueId) return false;
     if (booking.date !== input.date) return false;
     if (booking.status === 'cancelled') return false;
-    return true;
+
+    const existingStart = parseTimeToMinutes(booking.startTime);
+    const existingEnd = existingStart + Number(booking.durationHours || 0) * 60;
+    return hasTimeOverlap(requestedStart, requestedEnd, existingStart, existingEnd);
   });
+}
+
+function parseCapacity(value) {
+  const amount = Number(String(value || '').replace(/[^0-9.]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function parsePrice(value) {
+  const amount = Number(String(value || '').replace(/[^0-9.]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+async function findSimilarVenues(currentVenue, input, bookings) {
+  const allVenues = await listVenues({}, { limit: 30, skip: 0 });
+  const requestedCapacity = Number(input.guestCount || 0);
+  const requestedProvince = currentVenue.province || '';
+  const requestedCategory = currentVenue.category || '';
+
+  return allVenues
+    .filter((venue) => venue.id !== currentVenue.id)
+    .filter((venue) => String(venue.status || '').toLowerCase() !== 'pending')
+    .filter((venue) => parseCapacity(venue.capacity) >= requestedCapacity)
+    .map((venue) => {
+      let score = 0;
+      if (venue.province === requestedProvince) score += 35;
+      if (venue.category === requestedCategory) score += 25;
+      if (String(venue.setting || '').toLowerCase().includes(String(currentVenue.setting || '').toLowerCase())) score += 15;
+      if (parseCapacity(venue.capacity) >= requestedCapacity) score += 10;
+      if (venue.rating && venue.rating !== 'New') score += 8;
+      if (parsePrice(venue.price) <= parsePrice(currentVenue.price)) score += 7;
+
+      const hasConflict = bookings.some((booking) => {
+        if (booking.venueId !== venue.id || booking.date !== input.date || booking.status === 'cancelled') return false;
+        const existingStart = parseTimeToMinutes(booking.startTime);
+        const existingEnd = existingStart + Number(booking.durationHours || 0) * 60;
+        const requestedStart = parseTimeToMinutes(input.startTime);
+        const requestedEnd = requestedStart + Number(input.durationHours || 0) * 60;
+        return hasTimeOverlap(requestedStart, requestedEnd, existingStart, existingEnd);
+      });
+
+      return { venue, score, hasConflict };
+    })
+    .filter((item) => !item.hasConflict)
+    .sort((a, b) => b.score - a.score || parsePrice(a.venue.price) - parsePrice(b.venue.price))
+    .slice(0, 4)
+    .map(({ venue, score }) => ({
+      id: venue.id,
+      name: venue.name,
+      location: venue.location,
+      province: venue.province,
+      category: venue.category,
+      capacity: venue.capacity,
+      price: venue.price,
+      heroImage: venue.heroImage,
+      score,
+    }));
 }
 
 async function createBooking(input, user) {
@@ -191,8 +272,9 @@ async function createBooking(input, user) {
   const guestCount = normalizePositiveNumber(input.guestCount || input.guests, 'Guest count', { min: 1 });
   const addons = normalizeVenueAddons(input.addons, venue);
 
-  if (hasScheduleConflict(bookings, { venueId, date, startTime })) {
-    throw new HttpError(409, 'This venue is already fully booked for that date.');
+  if (hasScheduleConflict(bookings, { venueId, date, startTime, durationHours })) {
+    const suggestions = await findSimilarVenues(venue, { date, startTime, durationHours, guestCount }, bookings);
+    throw new HttpError(409, 'This venue is already booked for the selected date and time. Here are similar venues you can try instead.', { suggestions });
   }
 
   const now = new Date().toISOString();
@@ -276,7 +358,8 @@ async function updateBooking(id, input, user) {
   }
 
   if (hasScheduleConflict(bookings, next, next.id)) {
-    throw new HttpError(409, 'This venue is already fully booked for that date.');
+    const suggestions = await findSimilarVenues(await getVenue(next.venueId), next, bookings);
+    throw new HttpError(409, 'This venue is already booked for the selected date and time. Here are similar venues you can try instead.', { suggestions });
   }
 
   bookings[index] = next;

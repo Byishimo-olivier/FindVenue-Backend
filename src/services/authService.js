@@ -78,6 +78,10 @@ function verificationEmailMessage(emailSent) {
     : 'Email was not sent. Please check your email settings and request a new code.';
 }
 
+function devVerificationCode(code, emailSent) {
+  return config.exposeDevCodes && !emailSent ? code : undefined;
+}
+
 async function registerUser(input) {
   const fullName = cleanString(input.fullName);
   const email = normalizeEmail(input.email);
@@ -111,6 +115,7 @@ async function registerUser(input) {
       token,
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.reason,
+      verificationCode: devVerificationCode(verificationCode, emailResult.sent),
       message: verificationEmailMessage(emailResult.sent),
     };
   }
@@ -138,6 +143,7 @@ async function registerUser(input) {
     token,
     emailSent: emailResult.sent,
     emailError: emailResult.sent ? undefined : emailResult.reason,
+    verificationCode: devVerificationCode(verificationCode, emailResult.sent),
     message: verificationEmailMessage(emailResult.sent),
   };
 }
@@ -304,6 +310,7 @@ async function resendVerificationCode(userId) {
     user: publicUser(user),
     emailSent: emailResult.sent,
     emailError: emailResult.sent ? undefined : emailResult.reason,
+    verificationCode: devVerificationCode(verificationCode, emailResult.sent),
     message: verificationEmailMessage(emailResult.sent),
   };
 }
