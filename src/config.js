@@ -72,7 +72,11 @@ const config = {
   mailDebug: getBooleanEnv('MAIL_DEBUG') === true,
   dbUrl,
   dbName: process.env.DB_NAME || process.env.db_name || getDbNameFromUrl(dbUrl) || 'smart_event_venue',
-  openAiApiKey: process.env.OPENAI_API_KEY || process.env.openai_api_key || '',
+  openAiApiKey:
+    process.env.OPENAI_API_KEY ||
+    process.env.OpenAI_API_KEY ||
+    process.env.openai_api_key ||
+    '',
   openAiModel: process.env.OPENAI_MODEL || process.env.openai_model || 'gpt-5.4-mini',
   exposeDevCodes: process.env.NODE_ENV !== 'production',
 };
