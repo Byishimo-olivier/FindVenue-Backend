@@ -16,14 +16,15 @@ function initializeProviders() {
   // PesaPal for card payments
   if (
     process.env.PesaPal_Consumer_Key &&
-    process.env.PesaPal_Consumer_Secret &&
-    process.env.APPLICATION_ID
+    process.env.PesaPal_Consumer_Secret
   ) {
     pesapalProvider = new PesaPalProvider({
       consumerKey: process.env.PesaPal_Consumer_Key,
       consumerSecret: process.env.PesaPal_Consumer_Secret,
       applicationId: process.env.APPLICATION_ID,
       callbackUrl: process.env.PesaPal_Callback_URL || 'http://localhost:4000/api/payments/webhook/pesapal',
+      apiUrl: process.env.PesaPal_API_URL || process.env.PESAPAL_API_URL,
+      notificationId: process.env.PesaPal_Notification_ID || process.env.PESAPAL_NOTIFICATION_ID,
     });
   }
 

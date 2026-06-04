@@ -3,15 +3,16 @@ const { HttpError } = require('../utils/errors');
 
 class PesaPalProvider {
   constructor(config) {
-    if (!config.consumerKey || !config.consumerSecret || !config.applicationId) {
-      throw new Error('PesaPal credentials are required');
+    if (!config.consumerKey || !config.consumerSecret) {
+      throw new Error('PesaPal consumer key and consumer secret are required');
     }
 
     this.consumerKey = config.consumerKey;
     this.consumerSecret = config.consumerSecret;
-    this.applicationId = config.applicationId;
+    this.applicationId = config.applicationId || '';
     this.callbackUrl = config.callbackUrl;
-    this.apiUrl = 'https://api.pesapal.com/v3';
+    this.apiUrl = String(config.apiUrl || 'https://pay.pesapal.com/v3').replace(/\/+$/, '');
+    this.notificationId = config.notificationId || '';
     this.authToken = null;
     this.tokenExpiry = null;
   }
@@ -27,7 +28,7 @@ class PesaPalProvider {
     }
 
     try {
-      const response = await axios.post(`${this.apiUrl}/api/auth/request/token`, {
+      const response = await axios.post(`${this.apiUrl}/api/Auth/RequestToken`, {
         consumer_key: this.consumerKey,
         consumer_secret: this.consumerSecret,
       });
@@ -38,7 +39,8 @@ class PesaPalProvider {
 
       return this.authToken;
     } catch (error) {
-      throw new HttpError(500, `PesaPal authentication failed: ${error.message}`);
+      const message = error.response?.data?.message || error.response?.data?.error || error.message;
+      throw new HttpError(error.response?.status || 500, `PesaPal authentication failed: ${message}`);
     }
   }
 
@@ -50,8 +52,43 @@ class PesaPalProvider {
     const token = await this.getAuthToken();
     return {
       Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
       'Content-Type': 'application/json',
     };
+  }
+
+  async getNotificationId() {
+    if (this.notificationId) return this.notificationId;
+
+    if (!this.callbackUrl) {
+      throw new HttpError(500, 'PesaPal callback URL is required.');
+    }
+
+    try {
+      const headers = await this.getAuthHeader();
+      const response = await axios.post(
+        `${this.apiUrl}/api/URLSetup/RegisterIPN`,
+        {
+          url: this.callbackUrl,
+          ipn_notification_type: 'POST',
+        },
+        { headers }
+      );
+
+      this.notificationId = response.data.ipn_id || response.data.ipnId || '';
+      if (!this.notificationId) {
+        throw new Error('PesaPal did not return an IPN notification id.');
+      }
+
+      return this.notificationId;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      const message = error.response?.data?.message || error.response?.data?.error || error.message;
+      throw new HttpError(
+        error.response?.status || 500,
+        `PesaPal IPN registration failed: ${message}. Use a public callback URL and set PesaPal_Notification_ID if you already registered one.`
+      );
+    }
   }
 
   /**
@@ -72,13 +109,15 @@ class PesaPalProvider {
 
     try {
       const headers = await this.getAuthHeader();
+      const notificationId = await this.getNotificationId();
 
       const orderData = {
         id: orderId,
-        currency: currency || 'KES',
+        currency: currency || 'RWF',
         amount,
         description,
         callback_url: this.callbackUrl,
+        notification_id: notificationId,
         redirect_mode: 'REDIRECT',
         customer: {
           email: customerEmail,
@@ -91,14 +130,14 @@ class PesaPalProvider {
       };
 
       const response = await axios.post(
-        `${this.apiUrl}/api/orders`,
+        `${this.apiUrl}/api/Transactions/SubmitOrderRequest`,
         orderData,
         { headers }
       );
 
       return {
         provider: 'pesapal',
-        providerId: response.data.order_id,
+        providerId: response.data.order_tracking_id || response.data.order_id,
         redirectUrl: response.data.redirect_url,
         status: 'pending',
         amount,
@@ -106,7 +145,7 @@ class PesaPalProvider {
       };
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message;
-      throw new HttpError(500, `PesaPal order creation failed: ${errorMsg}`);
+      throw new HttpError(error.response?.status || 500, `PesaPal order creation failed: ${errorMsg}`);
     }
   }
 
@@ -120,20 +159,18 @@ class PesaPalProvider {
       const headers = await this.getAuthHeader();
 
       const response = await axios.get(
-        `${this.apiUrl}/api/orders/${orderId}/transactions`,
+        `${this.apiUrl}/api/Transactions/GetTransactionStatus?orderTrackingId=${encodeURIComponent(orderId)}`,
         { headers }
       );
 
-      if (
-        response.data &&
-        response.data.length > 0
-      ) {
-        const transaction = response.data[0];
+      if (response.data) {
+        const transaction = response.data;
+        const status = transaction.payment_status_description || transaction.status;
         return {
-          status: transaction.status,
+          status,
           amount: transaction.amount,
           currency: transaction.currency,
-          succeeded: transaction.status === 'COMPLETED',
+          succeeded: status === 'Completed' || status === 'COMPLETED',
           transactionId: transaction.id,
           reference: transaction.reference,
         };
