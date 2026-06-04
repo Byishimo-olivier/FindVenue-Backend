@@ -11,7 +11,7 @@ class PesaPalProvider {
     this.consumerSecret = config.consumerSecret;
     this.applicationId = config.applicationId || '';
     this.callbackUrl = config.callbackUrl;
-    this.apiUrl = String(config.apiUrl || 'https://pay.pesapal.com/v3').replace(/\/+$/, '');
+    this.apiUrl = normalizePesaPalApiUrl(config.apiUrl);
     this.notificationId = config.notificationId || '';
     this.authToken = null;
     this.tokenExpiry = null;
@@ -39,7 +39,7 @@ class PesaPalProvider {
 
       return this.authToken;
     } catch (error) {
-      const message = error.response?.data?.message || error.response?.data?.error || error.message;
+      const message = getPesaPalErrorMessage(error);
       throw new HttpError(error.response?.status || 500, `PesaPal authentication failed: ${message}`);
     }
   }
@@ -83,7 +83,7 @@ class PesaPalProvider {
       return this.notificationId;
     } catch (error) {
       if (error instanceof HttpError) throw error;
-      const message = error.response?.data?.message || error.response?.data?.error || error.message;
+      const message = getPesaPalErrorMessage(error);
       throw new HttpError(
         error.response?.status || 500,
         `PesaPal IPN registration failed: ${message}. Use a public callback URL and set PesaPal_Notification_ID if you already registered one.`
@@ -138,13 +138,13 @@ class PesaPalProvider {
       return {
         provider: 'pesapal',
         providerId: response.data.order_tracking_id || response.data.order_id,
-        redirectUrl: response.data.redirect_url,
+        redirectUrl: response.data.redirect_url || response.data.redirectUrl,
         status: 'pending',
         amount,
         currency,
       };
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
+      const errorMsg = getPesaPalErrorMessage(error);
       throw new HttpError(error.response?.status || 500, `PesaPal order creation failed: ${errorMsg}`);
     }
   }
@@ -232,6 +232,26 @@ class PesaPalProvider {
     // For now, basic validation
     return true;
   }
+}
+
+function normalizePesaPalApiUrl(value) {
+  const apiUrl = String(value || 'https://pay.pesapal.com/v3').trim().replace(/^['"]|['"]$/g, '').replace(/\/+$/, '');
+
+  if (!apiUrl) return 'https://pay.pesapal.com/v3';
+  if (/cybqa\.pesapal\.com/i.test(apiUrl)) return 'https://cybqa.pesapal.com/pesapalv3';
+  if (/\/v3$/i.test(apiUrl)) return apiUrl;
+  if (/\/pesapalv3$/i.test(apiUrl)) return apiUrl;
+
+  return 'https://pay.pesapal.com/v3';
+}
+
+function getPesaPalErrorMessage(error) {
+  const data = error.response?.data;
+  if (typeof data === 'string' && data.trim()) return data;
+  if (data?.error?.message) return data.error.message;
+  if (data?.message) return data.message;
+  if (data?.error && typeof data.error === 'string') return data.error;
+  return error.message;
 }
 
 module.exports = PesaPalProvider;

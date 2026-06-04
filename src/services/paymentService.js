@@ -129,6 +129,10 @@ async function createPaymentIntent(input, user) {
       description: `Venue booking - ${venueId}`,
     });
 
+    if (!providerResult.redirectUrl) {
+      throw new HttpError(502, 'PesaPal did not return a checkout link. Check PesaPal_API_URL and callback/IPN settings.');
+    }
+
     paymentRecord.provider = 'pesapal';
     paymentRecord.providerId = providerResult.providerId;
     paymentRecord.providerData = {
