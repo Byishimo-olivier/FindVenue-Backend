@@ -1,5 +1,101 @@
 [
   {
+    "id": "pay_15c0647c68d44d10a8",
+    "userId": "5ced877f-4e0b-48a7-b31d-e711f0426cc3",
+    "venueId": "keza-garden",
+    "bookingId": "book_e500902f0f664256ab",
+    "amount": 2124000,
+    "currency": "RWF",
+    "method": "phone",
+    "status": "requires_confirmation",
+    "provider": "paypack",
+    "providerId": "f5525d18-826a-493b-94ad-e96702e335ab",
+    "providerData": {
+      "phoneNumber": "+250783227490"
+    },
+    "createdAt": "2026-06-03T10:38:45.640Z",
+    "updatedAt": "2026-06-03T10:38:45.640Z"
+  },
+  {
+    "id": "pay_6e13cd44ec9e4535a3",
+    "userId": "5ced877f-4e0b-48a7-b31d-e711f0426cc3",
+    "venueId": "keza-garden",
+    "bookingId": "book_e500902f0f664256ab",
+    "amount": 2124000,
+    "currency": "RWF",
+    "method": "phone",
+    "status": "requires_confirmation",
+    "provider": "paypack",
+    "providerId": "d9219917-3d67-48fe-8219-f8581475e502",
+    "providerData": {
+      "phoneNumber": "+250783227490"
+    },
+    "createdAt": "2026-06-03T10:30:16.891Z",
+    "updatedAt": "2026-06-03T10:30:16.892Z"
+  },
+  {
+    "id": "pay_41f82a6bd5a848eda5",
+    "userId": "5ced877f-4e0b-48a7-b31d-e711f0426cc3",
+    "venueId": "keza-garden",
+    "bookingId": "book_e500902f0f664256ab",
+    "amount": 2124000,
+    "currency": "RWF",
+    "method": "phone",
+    "status": "requires_confirmation",
+    "provider": "paypack",
+    "providerId": "408b43a6-134a-45e7-814c-bc9ce34de206",
+    "providerData": {
+      "phoneNumber": "+250783227490"
+    },
+    "createdAt": "2026-06-03T10:19:16.608Z",
+    "updatedAt": "2026-06-03T10:19:16.608Z"
+  },
+  {
+    "id": "pay_0e46019e995c47849c",
+    "userId": "5ced877f-4e0b-48a7-b31d-e711f0426cc3",
+    "venueId": "keza-garden",
+    "bookingId": "book_e500902f0f664256ab",
+    "amount": 2124000,
+    "currency": "RWF",
+    "method": "phone",
+    "status": "requires_confirmation",
+    "provider": "paypack",
+    "providerId": "84d553e2-25e3-4e2b-a1ee-d39a79f86a04",
+    "providerData": {
+      "phoneNumber": "+250783227490"
+    },
+    "createdAt": "2026-06-03T10:18:43.678Z",
+    "updatedAt": "2026-06-03T10:18:43.678Z"
+  },
+  {
+    "id": "pay_f467d19db20245d3a5",
+    "userId": "5ced877f-4e0b-48a7-b31d-e711f0426cc3",
+    "venueId": "keza-garden",
+    "bookingId": "book_ccfdd6710f144877b4",
+    "amount": 2124000,
+    "currency": "RWF",
+    "method": "mobile_money",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-03T07:45:57.776Z",
+    "updatedAt": "2026-06-03T07:45:57.791Z",
+    "paidAt": "2026-06-03T07:45:57.791Z"
+  },
+  {
+    "id": "pay_24f53850b97f439ca7",
+    "userId": "cbcb4894-dac8-4871-b75e-ba7c70c483f8",
+    "venueId": "ubwiza-garden",
+    "bookingId": "book_f59d2b7c8c74443480",
+    "amount": 35400000,
+    "currency": "RWF",
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-29T15:15:59.292Z",
+    "updatedAt": "2026-05-29T15:15:59.330Z",
+    "paidAt": "2026-05-29T15:15:59.330Z"
+  },
+  {
     "id": "pay_c496c287747e416cb6",
     "userId": "cbcb4894-dac8-4871-b75e-ba7c70c483f8",
     "venueId": "keza-garden",

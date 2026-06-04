@@ -12,18 +12,16 @@ function withVenueDefaults(venue) {
   };
 }
 
-function isDataUri(value) {
-  return typeof value === 'string' && /^data:image\//i.test(value);
-}
-
 function compactVenueForList(venue) {
   return {
     ...venue,
-    heroImage: isDataUri(venue.heroImage) ? fallbackHeroImage : venue.heroImage || fallbackHeroImage,
+    heroImage: venue.heroImage || fallbackHeroImage,
     galleryImages: Array.isArray(venue.galleryImages)
-      ? venue.galleryImages.filter((item) => typeof item === 'string' && !isDataUri(item)).slice(0, 3)
+      ? venue.galleryImages.filter((item) => typeof item === 'string' && item)
       : [],
-    galleryMedia: [],
+    galleryMedia: Array.isArray(venue.galleryMedia)
+      ? venue.galleryMedia.filter((item) => item?.url)
+      : [],
     amenities: [],
     addons: [],
     contactPerson: '',
@@ -48,6 +46,18 @@ function parseMoney(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   const amount = Number(String(value || '').replace(/[^0-9.]/g, ''));
   return Number.isFinite(amount) ? amount : 0;
+}
+
+function normalizeCoordinate(value, fieldName, min, max, existing = '') {
+  const raw = cleanString(value || existing || '');
+  if (!raw) return '';
+
+  const coordinate = Number(raw);
+  if (!Number.isFinite(coordinate) || coordinate < min || coordinate > max) {
+    throw new HttpError(400, `${fieldName} must be between ${min} and ${max}.`);
+  }
+
+  return String(coordinate);
 }
 
 function normalizeAddons(addons, existingAddons = []) {
@@ -79,6 +89,8 @@ function normalizeVenue(input, ownerId, existing = {}) {
     contactPerson: cleanString(input.contactPerson || existing.contactPerson || ''),
     phone: cleanString(input.phone || existing.phone || ''),
     email: cleanString(input.email || existing.email || ''),
+    latitude: normalizeCoordinate(input.latitude, 'Latitude', -90, 90, existing.latitude),
+    longitude: normalizeCoordinate(input.longitude, 'Longitude', -180, 180, existing.longitude),
     category: cleanString(input.category || existing.category || 'Event Venue'),
     label: cleanString(input.label || input.category || existing.label || 'Event Venue'),
     location: cleanString(input.location || existing.location || 'Rwanda'),

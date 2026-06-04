@@ -151,4 +151,78 @@ async function sendPasswordReset({ to, fullName, resetUrl }) {
   });
 }
 
-module.exports = { getEmailStatus, isEmailConfigured, sendPasswordReset, sendVerificationCode };
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatRwf(value = 0) {
+  return `RWF ${Math.round(Number(value) || 0).toLocaleString('en-US')}`;
+}
+
+function bookingText(booking, venue) {
+  return [
+    `Confirmation: ${booking.confirmationNumber}`,
+    `Venue: ${booking.venueName}`,
+    `Location: ${booking.venueLocation}`,
+    venue?.latitude && venue?.longitude ? `Coordinates: ${venue.latitude}, ${venue.longitude}` : '',
+    `Date: ${booking.date}`,
+    `Time: ${booking.startTime} for ${booking.durationHours} hours`,
+    `Guests: ${booking.guestCount}`,
+    `Status: ${String(booking.status || '').replace(/_/g, ' ')}`,
+    `Payment: ${String(booking.paymentStatus || '').replace(/_/g, ' ')}`,
+    `Total: ${formatRwf(booking.totals?.total)}`,
+    `Paid: ${formatRwf(booking.amountPaid)}`,
+    `Balance: ${formatRwf(booking.balanceRemaining)}`,
+  ].filter(Boolean).join('\n');
+}
+
+function bookingHtml(booking, venue, audience) {
+  const mapUrl = venue?.latitude && venue?.longitude
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${venue.latitude},${venue.longitude}`)}`
+    : '';
+
+  return `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#102033">
+      <h2>${audience === 'owner' ? 'New venue booking received' : 'Your booking is confirmed'}</h2>
+      <p><strong>Confirmation:</strong> ${escapeHtml(booking.confirmationNumber)}</p>
+      <p><strong>Venue:</strong> ${escapeHtml(booking.venueName)}</p>
+      <p><strong>Customer:</strong> ${escapeHtml(booking.customerName)} (${escapeHtml(booking.customerEmail)})</p>
+      <p><strong>Date and time:</strong> ${escapeHtml(booking.date)} at ${escapeHtml(booking.startTime)} for ${escapeHtml(booking.durationHours)} hours</p>
+      <p><strong>Guests:</strong> ${escapeHtml(booking.guestCount)}</p>
+      <p><strong>Total:</strong> ${formatRwf(booking.totals?.total)}<br>
+      <strong>Paid:</strong> ${formatRwf(booking.amountPaid)}<br>
+      <strong>Balance:</strong> ${formatRwf(booking.balanceRemaining)}</p>
+      ${mapUrl ? `<p><a href="${mapUrl}" style="display:inline-block;background:#102033;color:#fff;padding:12px 18px;text-decoration:none">Navigate to venue</a></p>` : ''}
+    </div>
+  `;
+}
+
+async function sendBookingConfirmation({ booking, venue }) {
+  const recipients = [
+    booking.customerEmail && {
+      to: booking.customerEmail,
+      subject: `Booking confirmed: ${booking.venueName}`,
+      text: `Hello ${booking.customerName || 'there'},\n\nYour venue booking is confirmed.\n\n${bookingText(booking, venue)}\n\nSmart Event Venue`,
+      html: bookingHtml(booking, venue, 'customer'),
+    },
+    venue?.email && {
+      to: venue.email,
+      subject: `New booking: ${booking.venueName}`,
+      text: `Hello ${venue.contactPerson || 'Venue owner'},\n\nA customer booking has been confirmed.\n\n${bookingText(booking, venue)}\n\nSmart Event Venue`,
+      html: bookingHtml(booking, venue, 'owner'),
+    },
+  ].filter(Boolean);
+
+  const results = [];
+  for (const recipient of recipients) {
+    results.push(await sendEmail(recipient));
+  }
+  return results;
+}
+
+module.exports = { getEmailStatus, isEmailConfigured, sendBookingConfirmation, sendPasswordReset, sendVerificationCode };

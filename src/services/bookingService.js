@@ -289,6 +289,8 @@ async function createBooking(input, user) {
     venueId,
     venueName: venue.name,
     venueLocation: venue.location,
+    venueLatitude: venue.latitude || '',
+    venueLongitude: venue.longitude || '',
     venueImage: venue.heroImage,
     date,
     startTime,
@@ -384,6 +386,45 @@ async function cancelBooking(id, user) {
   return bookings[index];
 }
 
+async function refundBooking(id, user) {
+  const bookings = await readCollection('bookings');
+  const index = bookings.findIndex((item) => item.id === id);
+  if (index === -1) throw new HttpError(404, 'Booking not found.');
+  assertCanAccessBooking(bookings[index], user);
+
+  if (user.role === 'owner' && bookings[index].ownerId !== user.id) {
+    throw new HttpError(403, 'You can only return money for bookings on your venues.');
+  }
+  if (user.role !== 'owner' && user.role !== 'admin') {
+    throw new HttpError(403, 'Only venue owners can return client money.');
+  }
+
+  const amountPaid = Number(bookings[index].amountPaid || 0);
+  if (!amountPaid) {
+    throw new HttpError(400, 'This booking has no paid balance to refund.');
+  }
+  if (bookings[index].paymentStatus === 'refunded') {
+    throw new HttpError(400, 'This booking has already been refunded.');
+  }
+
+  const now = new Date().toISOString();
+  bookings[index] = {
+    ...bookings[index],
+    status: 'cancelled',
+    paymentStatus: 'refunded',
+    refundedAmount: amountPaid,
+    amountPaid: 0,
+    balanceRemaining: 0,
+    refundedAt: now,
+    refundProcessedBy: user.id,
+    cancelledAt: bookings[index].cancelledAt || now,
+    updatedAt: now,
+  };
+
+  await writeCollection('bookings', bookings);
+  return bookings[index];
+}
+
 async function markBookingPaid(id, payment) {
   if (!id) return null;
 
@@ -448,5 +489,6 @@ module.exports = {
   getVenueAddonCatalog,
   listBookings,
   markBookingPaid,
+  refundBooking,
   updateBooking,
 };

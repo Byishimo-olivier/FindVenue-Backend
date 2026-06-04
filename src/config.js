@@ -16,9 +16,22 @@ function getBooleanEnv(key) {
   return String(process.env[key]).toLowerCase() === 'true';
 }
 
+function getStringListEnv(...keys) {
+  for (const key of keys) {
+    if (process.env[key] !== undefined && process.env[key] !== '') {
+      return String(process.env[key])
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+  return [];
+}
+
 const mailPort = getNumberEnv('MAIL_PORT', 'SMTP_PORT') || 465;
 const explicitMailSecure = getBooleanEnv('MAIL_SECURE');
 const dbUrl = process.env.db_url || process.env.url_db || process.env.DB_URL || process.env.DATABASE_URL || process.env.MONGODB_URI || process.env.URL_DB || '';
+const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'http://127.0.0.1:5173';
 
 function normalizeMailPassword(value, host) {
   const password = String(value || '');
@@ -44,7 +57,12 @@ const config = {
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
-  frontendUrl: process.env.FRONTEND_URL || process.env.CLIENT_ORIGIN || 'http://127.0.0.1:5173',
+  frontendUrl,
+  frontendUrls: Array.from(new Set([
+    frontendUrl,
+    'https://findvenue.vercel.app',
+    ...getStringListEnv('FRONTEND_URLS', 'CLIENT_ORIGINS', 'ALLOWED_ORIGINS'),
+  ])),
   backendUrl: process.env.BACKEND_URL || '',
   mailUser: process.env.MAIL_USER || process.env.EMAIL_USER || process.env.USERNAME || '',
   mailHost: process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.gmail.com',
