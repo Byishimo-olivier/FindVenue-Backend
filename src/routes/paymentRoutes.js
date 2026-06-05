@@ -83,6 +83,17 @@ router.get('/callback/paypal', asyncHandler(async (req, res) => {
  * POST /api/payments/webhook/pesapal
  * PesaPal webhook handler (no auth required)
  */
+router.get('/webhook/pesapal', asyncHandler(async (req, res) => {
+  try {
+    await handlePaymentWebhook('pesapal', req.query);
+    const paymentId = req.query.OrderMerchantReference || req.query.orderMerchantReference || '';
+    const suffix = paymentId ? `?id=${encodeURIComponent(paymentId)}` : '';
+    res.redirect(`${config.frontendUrl}/payment/success${suffix}`);
+  } catch (error) {
+    res.redirect(`${config.frontendUrl}/payment/success?error=${encodeURIComponent(error.message)}`);
+  }
+}));
+
 router.post('/webhook/pesapal', asyncHandler(async (req, res) => {
   try {
     await handlePaymentWebhook('pesapal', req.body);

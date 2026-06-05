@@ -18,11 +18,18 @@ function initializeProviders() {
     process.env.PesaPal_Consumer_Key &&
     process.env.PesaPal_Consumer_Secret
   ) {
+    const callbackUrl =
+      process.env.PesaPal_Callback_URL ||
+      process.env.PESAPAL_CALLBACK_URL ||
+      (process.env.BACKEND_URL
+        ? `${process.env.BACKEND_URL.replace(/\/+$/, '')}/api/payments/webhook/pesapal`
+        : 'http://localhost:4000/api/payments/webhook/pesapal');
+
     pesapalProvider = new PesaPalProvider({
       consumerKey: process.env.PesaPal_Consumer_Key,
       consumerSecret: process.env.PesaPal_Consumer_Secret,
       applicationId: process.env.APPLICATION_ID,
-      callbackUrl: process.env.PesaPal_Callback_URL || 'http://localhost:4000/api/payments/webhook/pesapal',
+      callbackUrl,
       apiUrl: process.env.PesaPal_API_URL || process.env.PESAPAL_API_URL,
       notificationId: process.env.PesaPal_Notification_ID || process.env.PESAPAL_NOTIFICATION_ID,
     });
@@ -130,7 +137,15 @@ async function createPaymentIntent(input, user) {
     });
 
     if (!providerResult.redirectUrl) {
-      throw new HttpError(502, 'PesaPal did not return a checkout link. Check PesaPal_API_URL and callback/IPN settings.');
+      const providerMessage =
+        providerResult.message ||
+        providerResult.error?.message ||
+        providerResult.error ||
+        'No redirect_url in SubmitOrderRequest response';
+      throw new HttpError(
+        502,
+        `PesaPal did not return a checkout link: ${providerMessage}. Check PesaPal_API_URL and callback/IPN settings.`
+      );
     }
 
     paymentRecord.provider = 'pesapal';
@@ -294,14 +309,29 @@ async function handlePaymentWebhook(provider, webhookData, signature = null) {
       }
     }
 
-    // Update payment status based on webhook data
-    const orderRef = webhookData.order_id || webhookData.OrderId;
-    const paymentIndex = payments.findIndex((p) => p.providerId === orderRef);
+    const orderRef =
+      webhookData.OrderTrackingId ||
+      webhookData.orderTrackingId ||
+      webhookData.order_tracking_id ||
+      webhookData.order_id ||
+      webhookData.OrderId;
+    const merchantReference =
+      webhookData.OrderMerchantReference ||
+      webhookData.orderMerchantReference ||
+      webhookData.merchant_reference;
+    const paymentIndex = payments.findIndex(
+      (p) => p.providerId === orderRef || p.id === merchantReference
+    );
 
     if (paymentIndex !== -1) {
-      const transactionStatus = webhookData.transaction_status || webhookData.status;
+      let transactionStatus = webhookData.transaction_status || webhookData.status;
 
-      if (transactionStatus === 'COMPLETED' || transactionStatus === 'completed') {
+      if (!transactionStatus && orderRef) {
+        const statusResult = await pesapalProvider.getPaymentStatus(orderRef);
+        transactionStatus = statusResult.status;
+      }
+
+      if (String(transactionStatus).toUpperCase() === 'COMPLETED') {
         payments[paymentIndex] = {
           ...payments[paymentIndex],
           status: 'paid',
