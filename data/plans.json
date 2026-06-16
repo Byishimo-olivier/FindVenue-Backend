@@ -1,0 +1,49 @@
+[
+  {
+    "id": "starter",
+    "name": "Starter",
+    "price": 1000,
+    "currency": "RWF",
+    "billingPeriod": "monthly",
+    "description": "Perfect for new venue owners",
+    "features": [
+      "Up to 3 active listings",
+      "Basic analytics",
+      "Email support",
+      "Commission: 12%",
+      "Monthly billing"
+    ]
+  },
+  {
+    "id": "professional",
+    "name": "Professional",
+    "price": 2000,
+    "currency": "RWF",
+    "billingPeriod": "monthly",
+    "description": "For growing businesses",
+    "features": [
+      "Unlimited listings",
+      "Advanced analytics",
+      "Priority support",
+      "Commission: 8%",
+      "Marketing tools",
+      "Monthly billing"
+    ]
+  },
+  {
+    "id": "premium",
+    "name": "Premium",
+    "price": 3000,
+    "currency": "RWF",
+    "billingPeriod": "monthly",
+    "description": "For established venues",
+    "features": [
+      "Unlimited everything",
+      "Dedicated account manager",
+      "24/7 phone support",
+      "Commission: 5%",
+      "Custom integrations",
+      "Monthly billing"
+    ]
+  }
+]

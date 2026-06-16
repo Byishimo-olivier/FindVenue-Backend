@@ -7,6 +7,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const ownerRoutes = require('./routes/ownerRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const venueRoutes = require('./routes/venueRoutes');
 
 function isAllowedOrigin(origin) {
@@ -56,6 +57,7 @@ function createApp() {
   app.use('/api/owner', ownerRoutes);
   app.use('/api/venues', venueRoutes);
   app.use('/api/payments', paymentRoutes);
+  app.use('/api/subscriptions', subscriptionRoutes);
 
   app.use((_req, _res, next) => {
     const error = new Error('Route not found.');

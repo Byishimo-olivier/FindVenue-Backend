@@ -7,10 +7,12 @@ const { sendBookingConfirmation } = require('./emailService');
 const { getVenue } = require('./venueService');
 const PesaPalProvider = require('../payment-providers/pesapalProvider');
 const PaypackProvider = require('../payment-providers/paypackProvider');
+const PayPalProvider = require('../payment-providers/paypalProvider');
 
 // Initialize payment providers
 let pesapalProvider;
 let paypackProvider;
+let paypalProvider;
 
 function initializeProviders() {
   // PesaPal for card payments
@@ -33,6 +35,31 @@ function initializeProviders() {
       apiUrl: process.env.PesaPal_API_URL || process.env.PESAPAL_API_URL,
       notificationId: process.env.PesaPal_Notification_ID || process.env.PESAPAL_NOTIFICATION_ID,
     });
+  }
+
+  // PayPal for mobile payments
+  const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+  const paypalClientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+  if (paypalClientId && paypalClientSecret) {
+    try {
+      const callbackUrl =
+        process.env.PAYPAL_CALLBACK_URL ||
+        (process.env.BACKEND_URL
+          ? `${process.env.BACKEND_URL.replace(/\/+$/, '')}/api/payments/callback/paypal`
+          : 'http://localhost:4000/api/payments/callback/paypal');
+
+      paypalProvider = new PayPalProvider({
+        clientId: paypalClientId,
+        clientSecret: paypalClientSecret,
+        callbackUrl,
+        mode: process.env.PAYPAL_MODE || 'sandbox',
+      });
+      console.log('✅ PayPal provider initialized');
+    } catch (error) {
+      console.warn('⚠️  PayPal provider initialization failed, will use mock mode:', error.message);
+      paypalProvider = null;
+    }
   }
 
   const paypackClientId = process.env.PAYPACK_CLIENT_ID || process.env.PAYPAL_CLIENT_ID;
@@ -89,6 +116,7 @@ async function createPaymentIntent(input, user) {
   let venueId = cleanString(input.venueId);
   const method = cleanString(input.method || 'card');
   const currency = cleanString(input.currency || 'RWF');
+  const paymentType = cleanString(input.type || 'booking'); // 'booking' or 'subscription'
 
   if (bookingId) {
     booking = await getBooking(bookingId, user);
@@ -96,20 +124,24 @@ async function createPaymentIntent(input, user) {
     venueId = booking.venueId;
   }
 
-  if (!venueId) throw new HttpError(400, 'Venue ID is required.');
-  await getVenue(venueId);
+  // Subscription payments don't require a venue
+  if (paymentType !== 'subscription') {
+    if (!venueId) throw new HttpError(400, 'Venue ID is required.');
+    await getVenue(venueId);
+  }
 
-  const amount = normalizeBookingPaymentAmount(input.amount, booking);
+  const amount = paymentType === 'subscription' ? normalizeAmount(input.amount) : normalizeBookingPaymentAmount(input.amount, booking);
   const payments = await readCollection('payments');
 
   const paymentRecord = {
     id: `pay_${crypto.randomUUID().replace(/-/g, '').slice(0, 18)}`,
     userId: user.id,
-    venueId,
+    venueId: venueId || null,
     bookingId: bookingId || null,
     amount,
     currency,
     method,
+    type: paymentType,
     status: 'requires_confirmation',
     provider: null,
     providerId: null,
@@ -154,27 +186,28 @@ async function createPaymentIntent(input, user) {
       redirectUrl: providerResult.redirectUrl,
     };
   } else if (method === 'phone' || method === 'mobile') {
-    // Use Paypack for Rwanda mobile money payments.
+    // Use Paypack for Rwanda mobile money payments
+    console.log('📱 Initiating Paypack mobile payment for phone:', input.phoneNumber);
+
     if (!paypackProvider) {
       throw new HttpError(500, 'Mobile payment provider (Paypack) is not configured.');
     }
 
     providerResult = await paypackProvider.createCashin({
       amount,
-      currency,
-      orderId: paymentRecord.id,
       phoneNumber: input.phoneNumber,
+      orderId: paymentRecord.id,
+    });
+
+    console.log('✅ Paypack Transaction Created:', {
+      provider: providerResult.provider,
+      providerId: providerResult.providerId,
     });
 
     paymentRecord.provider = 'paypack';
     paymentRecord.providerId = providerResult.providerId;
     paymentRecord.providerData = {
       phoneNumber: input.phoneNumber,
-      normalizedPhoneNumber: providerResult.normalizedPhoneNumber,
-      paypackStatus: providerResult.status,
-      paypackResponse: providerResult.paypackResponse,
-      requestedAmount: providerResult.requestedAmount,
-      chargedAmount: providerResult.chargedAmount,
     };
   } else {
     throw new HttpError(400, 'Unsupported payment method. Use "card" or "phone".');

@@ -1,0 +1,6 @@
+
+> backend@1.0.0 start
+> node src/server.js
+
+Smart Event Venue API running on http://localhost:4000
+Backend failed to start on port 4000: listen EADDRINUSE: address already in use :::4000

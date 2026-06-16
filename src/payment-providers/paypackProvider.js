@@ -94,6 +94,13 @@ class PaypackProvider {
 
     try {
       const headers = await this.getHeaders(orderId);
+      console.log('📱 Paypack Request:', {
+        amount: chargeAmount,
+        phoneNumber: normalizedPhoneNumber,
+        orderId,
+        environment: this.environment,
+      });
+
       const response = await axios.post(
         `${this.apiUrl}/transactions/cashin`,
         {
@@ -102,6 +109,8 @@ class PaypackProvider {
         },
         { headers }
       );
+
+      console.log('✅ Paypack Response:', response.data);
 
       return {
         provider: 'paypack',
@@ -115,6 +124,12 @@ class PaypackProvider {
         chargedAmount: chargeAmount,
       };
     } catch (error) {
+      console.error('❌ Paypack Error:', {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.response?.data?.error || error.message,
+        data: error.response?.data,
+      });
+
       if (error instanceof HttpError) {
         throw error;
       }
